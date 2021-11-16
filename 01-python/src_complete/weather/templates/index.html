@@ -1,0 +1,75 @@
+<!--Generated when all goes well, shows weather-->
+{% extends "bootstrap/base.html" %}
+{% block title %}WeatherApp test{% endblock %}
+
+{% block navbar %}
+    <div class="navbar navbar-fixed-top">
+        <!-- ... -->
+    </div>
+{% endblock %}
+
+{% block content %}
+    <h1> WeatherApp </h1>
+
+    <!--we for to allow inputs, name field is returned in the requests form-->
+    <form method='POST' action='/'>
+        <input type="text" name="location" placeholder="Enter location ..." style="max-width: 10000px;" autofocus
+               required/>
+        <input type="text" name="longitude" id="longitude" placeholder="Enter longitude ..." style="max-width: 10000px;"
+               autofocus required/>
+        <input type="text" name="latitude" id="latitude" placeholder="Enter latitude ..." style="max-width: 10000px;"
+               autofocus required/>
+        <button type="submit" class="btn btn-default">Submit</button>
+    </form>
+
+    <!-- Only show if we actually have weather -->
+    {% if weather %}
+        <h2>Current weather in {{ location }}</h2>
+        <h3>Status: {{ weather['status'] }} <img src="{{ weather['icon_url'] }}"></h3>
+        <table class="table table-striped table-bordered table-condensed">
+            <tbody>
+            <tr>
+                <td>Temperature</td>
+                <td><b>Average<b></td>
+                <td><b>Max<b></td>
+                <td><b>temp_min<b></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>{{ weather['temp'] }}</td>
+                <td>{{ weather['temp_max'] }}</td>
+                <td>{{ weather['temp_min'] }}</td>
+            </tr>
+            <tr>
+            </tr>
+            </tbody>
+        </table>
+        <!-- New code for Wind-->
+        <h4>Wind speed: {{ weather['speed'] }}</h4>
+        <h4>Wind degree direction: {{ weather['deg'] }}</h4>
+        <h4>Wind cardinal direction: {{ weather['wind_sector'] }}</h4>
+    {% endif %}
+    <!-- New code for Longitude and Latitude-->
+    {% if coord_weather %}
+        <h2>Current weather at Longitude {{ longitude }} and Latitude {{ latitude }}</h2>
+        <h3>Status: {{ coord_weather['status'] }} <img src="{{ coord_weather['icon_url'] }}"></h3>
+        <table class="table table-striped table-bordered table-condensed">
+            <tbody>
+            <tr>
+                <td>Temperature</td>
+                <td><b>Average<b></td>
+                <td><b>Max<b></td>
+                <td><b>temp_min<b></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>{{ coord_weather['temp'] }}</td>
+                <td>{{ coord_weather['temp_max'] }}</td>
+                <td>{{ coord_weather['temp_min'] }}</td>
+            </tr>
+            <tr>
+            </tr>
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}
