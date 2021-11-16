@@ -37,6 +37,10 @@ def create_app(config=None):
         coord_weather = {}
         location = ""
 
+        # extra code
+        longitude = ""
+        latitude = ""
+
         if request.method == "POST":
             # get location that the user has entered
             try:
@@ -52,18 +56,29 @@ def create_app(config=None):
                 weather_api_wrapper = WeatherApiWrapper(options)
 
                 # return a map with weather at the desired location
-                weather = weather_api_wrapper.get_current_weather_at_location(location, options['temperature_unit'])
-
-                # TODO add in ability to get wind direction
-
+                weather = weather_api_wrapper.get_current_weather_at_location(location, options['temperature_unit'],
+                                                                              options['wind_unit'])
 
                 # if errors are found return a 500 page and carry on
                 if 'errors' in weather:
                     return render_template('500.html', errors=weather.get('errors'))
 
-            # TODO add in ability to obtain weather from longitude and latitude
+            ## new code block
+            # get the longitude and latitude
+            try:
+                latitude = int(request.form['latitude'])
+                longitude = int(request.form['longitude'])
+            except:
+                print("Unable to get longitude or latitude in request, something has gone badly wrong!")
+                exit(1)
+            if longitude and latitude:
+                coord_weather = weather_api_wrapper.get_current_weather_at_coordinates(longitude, latitude,
+                                                                                       options['temperature_unit'])
+                if 'errors' in coord_weather:
+                    return render_template('500.html', errors=coord_weather.get('errors'))
 
-        return render_template("index.html", weather=weather, location=location)
+        return render_template("index.html", weather=weather, coord_weather=coord_weather, location=location,
+                               longitude=longitude, latitude=latitude)
 
     # in cases of generic error return 500
     @app.errorhandler(500)

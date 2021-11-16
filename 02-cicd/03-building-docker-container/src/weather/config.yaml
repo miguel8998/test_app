@@ -1,3 +1,4 @@
 ---
 api_key: 2c70598b6d46fa68b8a1d5f2f688eb6b
 temperature_unit: celsius
+wind_unit: miles_hour

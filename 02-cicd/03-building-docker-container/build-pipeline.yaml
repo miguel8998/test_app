@@ -1,0 +1,75 @@
+resource_types:
+- name: keyval
+  source:
+    repository: swce/keyval-resource
+  type: docker-image
+
+resources:
+# Define the github repository as a resource
+- icon: github
+  name: graduate-workshops
+  source:
+    branch: master
+    # It is important to note that in a production setup this would be backed by a secret management solution 
+    #   and private keys would be read in from their to prevent any exposure
+    private_key: ((ssh-key))
+    uri: git@github.com:sky-uk/GraduateWorkshops.git
+  type: git
+# Define the keyval resource to pass the TAG between stages
+- name: commit-tag
+  source: null
+  type: keyval
+
+jobs:
+  - name: job-build-container
+    public: true
+    plan:
+      # Get a copy of the repository
+      - get: graduate-workshops
+      # Build the docker container
+      - task: docker-build
+        privileged: true
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: karlkfi/concourse-dcind
+              tag: latest
+          # This is required to run the Docker In Docker (dind) image
+          inputs:
+            # Provide the github repository as an input to this task
+            - name: graduate-workshops
+          run:
+            path: entrypoint.sh
+            args:
+            - bash
+            - -ceux
+            - |
+              # This is the cloned Graduate workshop repository and we want to navigate to this sections directory
+              cd graduate-workshops/workshops/02-cicd/03-building-docker-container
+
+              # Note. When configuring access to the container registy remember to use the environment variable for the password
+              #   as this can use Concourse secrets to prevent security risks
+              set +x # we don't want to expose passwords
+              # TODO: Login to Dockerhub to push your images (make sure that the command is between the "set +x and set -x")
+              
+              set -x
+              
+              # TODO: Build and tag the docker image
+              TAG="${DOCKERHUB_USER}/cicd-workshop"
+
+              # TODO: Push the tagged docker image to a container registry
+
+              # Store the TAG in a file for use by the keyval pair resource
+              echo "TAG=${TAG}" > keyval.properties
+          outputs:
+            - name: graduate-workshops
+          params:
+            # Environment variables to use in the above shell
+            DOCKERHUB_USER: ((dockerhub-user))
+            DOCKERHUB_PASSWORD: ((dockerhub-password))
+            DOCKER_OPTS: "--registry-mirror=https://mirror.gcr.io"
+      - put: commit-tag
+        params:
+          file: graduate-workshops/workshops/02-cicd/03-building-docker-container/keyval.properties

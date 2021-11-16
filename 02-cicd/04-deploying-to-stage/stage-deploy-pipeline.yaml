@@ -1,0 +1,83 @@
+resource_types:
+- name: keyval
+  source:
+    repository: swce/keyval-resource
+  type: docker-image
+
+resources:
+# Define the github repository as a resource
+- icon: github
+  name: graduate-workshops
+  source:
+    branch: master
+    # It is important to note that in a production setup this would be backed by a secret management solution 
+    #   and private keys would be read in from their to prevent any exposure
+    private_key: ((ssh-key))
+    uri: git@github.com:sky-uk/GraduateWorkshops.git
+  type: git
+# Define the keyval resource to pass the TAG between stages
+- name: commit-tag
+  source: null
+  type: keyval
+
+jobs:
+  # TODO: Copy in previous jobs
+  - name: job-deploy-stage
+    public: true
+    plan:
+      # Get the keyval resource that contains the tag
+      - get: commit-tag
+        # When the previous job passes trigger the next
+        trigger: true
+        # Make sure that only commits which have the previous job are run
+        passed:
+          - job-build-container
+      - task: deploy-stage
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: bash
+              tag: latest
+          inputs:
+            - name: commit-tag
+          run:
+            path: bash
+            args: 
+            - -ceux
+            - |
+              # This just reads the tag in from the previous job
+              props="commit-tag/keyval.properties"
+              if [ -f "$props" ]
+              then
+                echo "Reading passed key values"
+                while IFS= read -r var
+                do
+                  if [ ! -z "$var" ]
+                  then
+                    echo "Adding: $var"
+                    export "$var"
+                  fi
+                done < "$props"
+              fi
+
+              # Install sshpass to allow us to use a password to SSH
+              apk add --update --no-cache openssh sshpass
+
+              # TODO: SSH into the stage VM and start the docker container
+              # Note. When configuring access to the container registy remember to use the environment variable for the password
+              #   as this can use Concourse secrets to prevent security risks
+              
+              echo "TAG=${TAG}" > graduate-workshops/keyval.properties
+          outputs:
+            - name: graduate-workshops
+          params:
+            # Environment variables for use in the above shell
+            DOCKERHUB_USER: ((dockerhub-user))
+            DOCKERHUB_PASSWORD: ((dockerhub-password))
+            VM_PUBLIC_IP: ((vm-stage-public-ip))
+            SSH_PASSWORD: ((ssh-stage-password))
+      - put: commit-tag
+        params:
+          file: graduate-workshops/keyval.properties

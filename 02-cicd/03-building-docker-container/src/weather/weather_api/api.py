@@ -3,6 +3,9 @@
 import pyowm
 from pyowm.exceptions.api_response_error import NotFoundError, UnauthorizedError, APIResponseError
 
+# allows for conversion from degrees to wind direction
+from weather.helper.utils import wind_deg_to_text
+
 
 class WeatherApiWrapper:
     """
@@ -23,7 +26,7 @@ class WeatherApiWrapper:
         location_details = self.client.weather_at_place(location)
         return location_details.get_weather()
 
-    def get_current_weather_at_location(self, location, temperature_unit):
+    def get_current_weather_at_location(self, location, temperature_unit, wind_unit):
         """
         Gets current weather status at a specific location
         returns a dict of form
@@ -37,7 +40,7 @@ class WeatherApiWrapper:
         except (NotFoundError, UnauthorizedError) as e:
             return {'errors': [e]}
 
-        # initialise weather dictionary
+        # initialise weather dicitionary
         weather_dict = {
             "status": weather_location.get_status(),
             "icon_url": weather_location.get_weather_icon_url()
@@ -47,10 +50,30 @@ class WeatherApiWrapper:
             # get_temperature retrieves a dictionary, so we can append this to ours to avoid too many keys!
             weather_dict.update(weather_location.get_temperature(temperature_unit))
 
+            ## extra code
+            weather_dict.update(weather_location.get_wind(wind_unit))
+            weather_dict.update({"wind_sector": wind_deg_to_text(weather_dict['deg'])})
+
         except APIResponseError as e:
             return {'errors': [e]}
         return weather_dict
 
+    ## extra code
+    def get_current_weather_at_coordinates(self, longtitude, latitude, unit):
+        """Gets the current weather at a specified longitude and latitude"""
+        try:
+            forecast = self.client.weather_at_coords(latitude, longtitude)
+            weather_location = forecast.get_weather()
+        except (ValueError, UnauthorizedError) as e:
+            return {'errors': [e]}
+        weather_dict = {
+            "status": weather_location.get_status(),
+            "icon_url": weather_location.get_weather_icon_url(),
+
+        }
+        weather_dict.update(weather_location.get_temperature(unit))
+        return weather_dict
+    ##
 
 class WeatherApiException(Exception):
     """Generic weather api exception"""

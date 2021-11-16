@@ -1,0 +1,88 @@
+resource_types:
+- name: keyval
+  source:
+    repository: swce/keyval-resource
+  type: docker-image
+
+resources:
+# Define the github repository as a resource
+- icon: github
+  name: graduate-workshops
+  source:
+    branch: master
+    # It is important to note that in a production setup this would be backed by a secret management solution 
+    #   and private keys would be read in from their to prevent any exposure
+    private_key: ((ssh-key))
+    uri: git@github.com:sky-uk/GraduateWorkshops.git
+  type: git
+# Define the keyval resource to pass the TAG between stages
+- name: commit-tag
+  source: null
+  type: keyval
+
+jobs:
+  # TODO: Copy in previous jobs
+  - name: job-deploy-prod
+    public: true
+    plan:
+      - get: commit-tag
+        trigger: true
+        passed:
+          - job-deploy-stage
+      - task: nft-test
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source: 
+              repository: bash
+              tag: latest
+          run:
+            path: /usr/local/bin/bash
+            args: 
+            - -c
+            - |
+              # TODO: Write a test to confirm that the stage deployment is healthy
+
+          params:
+            VM_PUBLIC_IP: ((vm-stage-public-ip))
+      - task: deploy-prod
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source: {repository: bash}
+          inputs:
+            - name: commit-tag
+          run:
+            path: /usr/local/bin/bash
+            args: 
+            - -c
+            - |
+              # This just reads the tag in from the previous job
+              props="commit-tag/keyval.properties"
+              if [ -f "$props" ]
+              then
+                echo "Reading passed key values"
+                while IFS= read -r var
+                do
+                  if [ ! -z "$var" ]
+                  then
+                    echo "Adding: $var"
+                    export "$var"
+                  fi
+                done < "$props"
+              fi
+
+              # Install sshpass to allow us to use a password to SSH
+              apk add --update --no-cache openssh sshpass
+
+              # TODO: SSH into the prod VM and start the docker container
+              # Note. When configuring access to the container registy remember to use the environment variable for the password
+              #   as this can use Concourse secrets to prevent security risks
+
+          params:
+            DOCKERHUB_USER: ((dockerhub-user))
+            DOCKERHUB_PASSWORD: ((dockerhub-password))
+            VM_PUBLIC_IP: ((vm-prod-public-ip))
+            SSH_PASSWORD: ((ssh-prod-password))

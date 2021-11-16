@@ -19,5 +19,14 @@ def validate_config(config):
     """
     Check for mandatory keys and values
     """
-    # TODO Add in checks to validate configs
+    if (
+            'api_key' not in config 
+            or 'temperature_unit' not in config 
+            or 'wind_unit' not in config
+            ):
+        return False
+    if config['temperature_unit'] not in ['celsius', 'kelvin', 'fahrenheit']:
+        return False
+    if config['wind_unit'] not in ['miles_hour']:
+        return False
     return True
