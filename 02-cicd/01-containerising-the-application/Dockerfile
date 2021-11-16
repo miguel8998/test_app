@@ -26,6 +26,5 @@ RUN pipenv sync
 # Expose the port we're going to run on
 EXPOSE $PORT
 
-# Run tests
-RUN pipenv run python -m unittest discover -s tests -v
+# Run app
 ENTRYPOINT pipenv run python -m flask run --host "$HOST_ADDRESS"
